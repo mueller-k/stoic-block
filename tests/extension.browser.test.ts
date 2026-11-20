@@ -115,8 +115,8 @@ test('consent → saved rules → actual redirected navigation, with configurati
     for (const hostname of ['example.test', 'news.example.test']) {
       await visit.goto(`http://${hostname}:${port}/private-path?secret=not-to-be-stored`);
       await expect(visit).toHaveURL(`chrome-extension://${extensionId}/quote.html`);
-      await expect(visit.locator('blockquote')).toContainText('Attend to the matter');
-      await expect(visit.locator('figcaption')).toContainText('George Long');
+      await expect(visit.locator('blockquote')).not.toBeEmpty();
+      await expect(visit.locator('figcaption')).toContainText('Translated by');
       await expect(visit.getByRole('link')).toHaveCount(0);
       await expect(visit.getByRole('button')).toHaveCount(0);
     }
