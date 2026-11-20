@@ -29,3 +29,5 @@ footer { margin-top: 2rem; }
   button { background: #bdd1b8; color: #18221b; }
   a { color: #bdd1b8; }
 }
+#domains { list-style: none; padding: 0; }
+#domains li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .5rem 0; overflow-wrap: anywhere; }

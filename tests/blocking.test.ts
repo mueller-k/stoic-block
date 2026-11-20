@@ -32,8 +32,15 @@ function fixture() {
 test('hostname normalization preserves explicit subdomains and handles case, IDNs and trailing dots', () => {
   assert.equal(normalizeHostname(' News.Example.COM. '), 'news.example.com');
   assert.equal(normalizeHostname('bücher.de'), 'xn--bcher-kva.de');
-  for (const value of ['', 'localhost', '127.0.0.1', '127.1', '0x7f000001', '[::1]', '*.example.com', 'https://example.com', 'example.com/path', 'a..com', '-a.com', 'a-.com', 'user@example.com', 'example.com:80', 'example.com?x=1', 'a%2ecom']) {
+  for (const value of ['', 'localhost', '127.0.0.1', '127.1', '0x7f000001', '[::1]', '*.example.com', 'example.com/path', 'a..com', '-a.com', 'a-.com', 'user@example.com', 'example.com:80', 'example.com?x=1', 'a%2ecom']) {
     assert.throws(() => normalizeHostname(value), Error, value);
+  }
+});
+
+test('URL input normalizes to a hostname and public suffixes cannot be blocked', () => {
+  assert.equal(normalizeHostname('https://BÜCHER.de.:8443/path%20name?q=*#part'), 'xn--bcher-kva.de');
+  for (const input of ['https://user:pass@example.com/', 'ftp://example.com', 'co.uk', 'github.io']) {
+    assert.throws(() => normalizeHostname(input), Error, input);
   }
 });
 
@@ -52,7 +59,34 @@ test('save installs one HTTP(S) top-level rule with a constant quote URL and onl
   assert.deepEqual(f.installed(), rulesFor(saved));
   assert.deepEqual(f.installed()[0].condition, { regexFilter: '^https?://', requestDomains: ['example.test'], resourceTypes: ['main_frame'] });
   assert.deepEqual(f.installed()[0].action.redirect, { extensionPath: '/quote.html' });
-  await assert.rejects(f.service.save('other.test', true), /already saved/);
+  await assert.rejects(f.service.save('EXAMPLE.test.', true), /already/);
+});
+
+test('explicit children survive parent removal, and disabling preserves entries', async () => {
+  const f = fixture();
+  let settings = await f.service.save('news.example.test', true);
+  settings = await f.service.save('example.test', true, settings);
+  assert.deepEqual(settings.domains, ['news.example.test', 'example.test']);
+  const stale = settings;
+  settings = await f.service.remove('example.test', settings);
+  assert.deepEqual(settings.domains, ['news.example.test']);
+  await assert.rejects(f.service.setEnabled(false, stale), /another tab/);
+  settings = await f.service.setEnabled(false, settings);
+  assert.deepEqual(settings.domains, ['news.example.test']);
+  assert.deepEqual(f.installed(), []);
+  settings = await f.service.setEnabled(true, settings);
+  assert.deepEqual(f.installed(), rulesFor(settings));
+  settings = await f.service.remove('news.example.test', settings);
+  assert.deepEqual(f.installed(), []);
+});
+
+test('blocklist capacity stops at 1,000 entries', async () => {
+  const f = fixture();
+  const settings = { version: 1 as const, domains: Array.from({ length: 1000 }, (_, i) => `site${i}.example.test`), enabled: true, consent: true };
+  await f.port.store(settings);
+  assert.equal((await f.service.current()).domains.length, 1000);
+  await assert.rejects(f.service.save('extra.example.test', true, settings), /full/);
+  assert.equal(f.installed().length, 1000);
 });
 
 test('rule update failure restores previous settings and remains visibly failed', async () => {
@@ -90,7 +124,7 @@ test('committed configuration reinstates rules after restart without recording v
 test('unverified rules cannot be reported as a successful save', async () => {
   const f = fixture();
   f.port.replace = async () => {};
-  await assert.rejects(f.service.save('example.test', true), /Could not save/);
+  await assert.rejects(f.service.save('example.test', true), /Could not apply/);
   assert.deepEqual(f.stored(), emptySettings());
 });
 

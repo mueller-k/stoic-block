@@ -11,7 +11,7 @@ npm ci
 npm run build
 ```
 
-In Chrome 121 or newer, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select this repository's `dist` directory. Click Stoic Block's toolbar icon (pin it first if needed) to open settings. Enter a hostname, preview its coverage, read the privacy explanation, then confirm **Save and enable**. Navigate or reload a tab for that hostname to see the quote page. Already-open pages remain untouched.
+In Chrome 121 or newer, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select this repository's `dist` directory. Click Stoic Block's toolbar icon (pin it first if needed) to open settings. Enter a hostname or HTTP(S) URL, preview its coverage, read the privacy explanation, then confirm **Save and enable**. Navigate or reload a tab for that hostname to see the quote page. Already-open pages remain untouched.
 
 Rebuild and reload the extension after changes. Configuration and dynamic rules persist across normal browser restarts. Only development builds are available; there is no store release yet.
 
@@ -26,7 +26,7 @@ The browser smoke test loads the actual build into a temporary Chromium profile 
 
 ## Current slice and remaining work
 
-[Save one domain and redirect a blocked visit to a bundled quote](https://github.com/mueller-k/stoic-block/issues/6) is the initial development slice. It accepts one hostname (not full URLs yet), previews hostname/subdomain coverage, obtains consent, and installs a verified redirect. To stop blocking in this slice, disable or remove the extension in Chrome. Blocklist editing/removal and global enable/disable controls follow in [Manage a validated blocklist](https://github.com/mueller-k/stoic-block/issues/7).
+[Manage a validated blocklist](https://github.com/mueller-k/stoic-block/issues/7) supports up to 1,000 hostnames, including internationalized names and HTTP(S) URLs. A bundled public-suffix dataset validates entries without network access. Preview and confirm each addition, confirm removals and disabling, and re-enable immediately from settings. Explicit subdomains remain saved independently of their parents. Disabling preserves the blocklist.
 
 The excerpt in the quote page is a **provisional development fixture**, from the research candidate for Marcus Aurelius, *Meditations* 8.22, translated by George Long. It has not passed historical-scan collation, rights review or maintainer editorial approval. Do not distribute this as an approved corpus or release candidate. Eight reviewed excerpts and complete credits follow in [Ship the reviewed quote collection and accessible presentation](https://github.com/mueller-k/stoic-block/issues/9).
 

@@ -1,4 +1,4 @@
-import { BlockingService, SETTINGS_KEY } from './blocking';
+import { BlockingService, SETTINGS_KEY, readSettings } from './blocking';
 
 const service = new BlockingService({
   load: async () => (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY],
@@ -31,14 +31,17 @@ chrome.runtime.onStartup.addListener(() => { void serialize(() => service.curren
 chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
   // The publicly accessible quote page is never a settings authority.
   if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('settings.html')) return false;
-  const request = message as { type?: unknown; hostname?: unknown; consent?: unknown } | null;
-  if (!request || (request.type !== 'load' && request.type !== 'save')) return false;
+  const request = message as { type?: unknown; hostname?: unknown; consent?: unknown; expected?: unknown; enabled?: unknown } | null;
+  if (!request || !['load', 'save', 'remove', 'enabled'].includes(String(request.type))) return false;
   void serialize(async () => {
     if (request.type === 'load') return service.current();
-    if (typeof request.hostname !== 'string' || request.consent !== true) {
-      throw new Error('Confirm a hostname and the privacy explanation before saving.');
+    const expected = readSettings(request.expected);
+    if (request.type === 'save' && typeof request.hostname === 'string' && request.consent === true) {
+      return service.save(request.hostname, true, expected);
     }
-    return service.save(request.hostname, request.consent);
+    if (request.type === 'remove' && typeof request.hostname === 'string') return service.remove(request.hostname, expected);
+    if (request.type === 'enabled' && typeof request.enabled === 'boolean') return service.setEnabled(request.enabled, expected);
+    throw new Error('Invalid settings change.');
   }).then(settings => respond({ ok: true, settings }), error => {
     respond({ ok: false, error: error instanceof Error ? error.message : 'Settings could not be saved. Please try again.' });
   });

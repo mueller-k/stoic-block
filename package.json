@@ -26,5 +26,8 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "tldts": "^7.5.5"
+  }
 }
