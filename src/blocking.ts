@@ -117,6 +117,7 @@ export class BlockingService {
     else if (pending !== undefined) {
       if (!pending || typeof pending !== 'object' || !('previous' in pending)) throw new Error('Recovery data is unreadable. Settings have been preserved.');
       const previous = (pending as { previous: unknown }).previous;
+      if (previous === undefined) throw new Error('Recovery data is unreadable. Settings have been preserved.');
       if (previous === null) {
         await this.enforce(emptySettings());
         await this.port.clear();
@@ -124,6 +125,10 @@ export class BlockingService {
         const authority = readSettings(previous);
         await this.enforce(authority);
         await this.port.store(authority);
+        if (JSON.stringify(readSettings(await this.port.load())) !== JSON.stringify(authority)) {
+          throw new Error('Recovery could not be verified. Reopen settings and try again.');
+        }
+        await this.enforce(authority);
         await this.port.clearPending();
       }
     }
@@ -192,6 +197,10 @@ export class BlockingService {
         await this.port.begin(previous);
         await this.enforce(previous);
         await this.port.store(previous);
+        if (JSON.stringify(readSettings(await this.port.load())) !== JSON.stringify(previous)) {
+          throw new Error('Previous settings could not be verified.');
+        }
+        await this.enforce(previous);
         await this.port.clearPending();
       } catch {
         throw new Error('Saving failed and recovery could not finish. Reopen settings to retry recovery; blocking may be incomplete.');

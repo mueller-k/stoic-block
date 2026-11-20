@@ -143,3 +143,48 @@ test('corrupt configuration is preserved and is not silently applied or reset', 
   assert.deepEqual(f.installed(), []);
   assert.throws(() => readSettings({ version: 1, domains: ['example.test'], enabled: true, consent: false }));
 });
+
+test('malformed recovery data preserves the saved configuration and rules', async () => {
+  const f = fixture();
+  const saved = await f.service.save('example.test', true);
+  await f.port.begin(undefined as unknown as null);
+  await assert.rejects(f.service.current(), /Recovery data is unreadable/);
+  assert.deepEqual(f.stored(), saved);
+  assert.deepEqual(f.installed(), rulesFor(saved));
+});
+
+test('a rollback that cannot verify restored storage keeps recovery pending', async () => {
+  const f = fixture();
+  const saved = await f.service.save('example.test', true);
+  const originalStore = f.port.store;
+  let writes = 0;
+  // Make the existing stored value disagree with the previous configuration only
+  // after the service reads it, as an interrupted or defective storage write can.
+  f.port.store = async settings => {
+    writes++;
+    if (writes === 1) {
+      await originalStore({ ...settings, domains: ['unexpected.test'] });
+      throw new Error('storage unavailable');
+    }
+    if (writes === 2) return;
+    await originalStore(settings);
+  };
+  await assert.rejects(f.service.setEnabled(false, saved), /recovery could not finish/);
+  assert.deepEqual(await f.port.pending(), { previous: saved });
+  assert.deepEqual(await f.service.current(), saved);
+  assert.deepEqual(f.installed(), rulesFor(saved));
+});
+
+test('interrupted recovery retains its marker until restored settings can be verified', async () => {
+  const f = fixture();
+  const saved = await f.service.save('example.test', true);
+  await f.port.begin(saved);
+  await f.port.store({ ...saved, domains: ['unexpected.test'] });
+  const originalStore = f.port.store;
+  f.port.store = async () => {};
+  await assert.rejects(f.service.current(), /Recovery could not be verified/);
+  assert.deepEqual(await f.port.pending(), { previous: saved });
+  f.port.store = originalStore;
+  assert.deepEqual(await f.service.current(), saved);
+  assert.deepEqual(f.installed(), rulesFor(saved));
+});
