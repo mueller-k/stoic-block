@@ -1,0 +1,30 @@
+{
+  "name": "stoic-block",
+  "version": "0.1.0",
+  "description": "A local-only Chrome extension for a moment to refocus.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/blocking.test.ts",
+    "test:browser": "npm run build && playwright test",
+    "check": "npm run typecheck && npm test && npm run test:browser"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mueller-k/stoic-block.git"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/mueller-k/stoic-block/issues"
+  },
+  "homepage": "https://github.com/mueller-k/stoic-block#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/chrome": "^0.3.7",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "private": true
+}
