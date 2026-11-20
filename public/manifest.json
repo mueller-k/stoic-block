@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Stoic Block",
+  "version": "0.1.0",
+  "description": "Replace distracting site visits with a quiet Stoic quote. Your blocklist stays local.",
+  "minimum_chrome_version": "121",
+  "permissions": ["storage", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "incognito": "not_allowed",
+  "background": { "service_worker": "worker.js" },
+  "action": { "default_title": "Open Stoic Block settings" },
+  "options_ui": { "page": "settings.html", "open_in_tab": true },
+  "web_accessible_resources": [{
+    "resources": ["quote.html", "quote.css"],
+    "matches": ["http://*/*", "https://*/*"]
+  }],
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'"
+  }
+}
