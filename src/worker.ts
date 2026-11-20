@@ -26,6 +26,12 @@ const service = new BlockingService({
   },
 });
 
+async function recoverySnapshot(): Promise<string> {
+  const data = await chrome.storage.local.get([SETTINGS_KEY, PENDING_KEY, 'resetRevision']);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(data)));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 // Every settings mutation passes through this worker and queue.
 let queue: Promise<unknown> = Promise.resolve();
 function serialize<T>(work: () => Promise<T>): Promise<T> {
@@ -44,11 +50,22 @@ chrome.runtime.onStartup.addListener(() => { void serialize(() => service.curren
 chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
   // The publicly accessible quote page is never a settings authority.
   if (sender.id !== chrome.runtime.id || sender.url !== chrome.runtime.getURL('settings.html')) return false;
-  const request = message as { type?: unknown; hostname?: unknown; consent?: unknown; expected?: unknown; enabled?: unknown } | null;
+  const request = message as { type?: unknown; hostname?: unknown; consent?: unknown; expected?: unknown; enabled?: unknown; recoverySnapshot?: unknown } | null;
   if (!request || !['load', 'save', 'remove', 'enabled', 'reset'].includes(String(request.type))) return false;
+  let snapshot: string | undefined;
   void serialize(async () => {
-    if (request.type === 'load') return service.current();
-    if (request.type === 'reset') return service.reset();
+    if (request.type === 'load') {
+      try { return await service.current(); }
+      catch (error) {
+        snapshot = await recoverySnapshot().catch(() => undefined);
+        throw error;
+      }
+    }
+    if (request.type === 'reset') {
+      if (typeof request.recoverySnapshot !== 'string') throw new Error('Settings are unavailable. Reopen settings and try again.');
+      if (request.recoverySnapshot !== await recoverySnapshot()) throw new Error('Settings changed in another tab. Reload settings and try again.');
+      return service.reset();
+    }
     const expected = readSettings(request.expected);
     if (request.type === 'save' && typeof request.hostname === 'string' && request.consent === true) {
       return service.save(request.hostname, true, expected);
@@ -57,7 +74,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
     if (request.type === 'enabled' && typeof request.enabled === 'boolean') return service.setEnabled(request.enabled, expected);
     throw new Error('Invalid settings change.');
   }).then(async settings => respond({ ok: true, settings, coverage: await chrome.permissions.contains({ origins: ['http://*/*', 'https://*/*'] }).catch(() => false) }), error => {
-    respond({ ok: false, error: error instanceof Error ? error.message : 'Settings could not be saved. Please try again.' });
+    respond({ ok: false, error: error instanceof Error ? error.message : 'Settings could not be saved. Please try again.', recoverySnapshot: snapshot });
   });
   return true;
 });

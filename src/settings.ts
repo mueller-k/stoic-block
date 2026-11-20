@@ -17,10 +17,14 @@ const checkAccess = document.querySelector<HTMLButtonElement>('#check-access')!;
 const reset = document.querySelector<HTMLButtonElement>('#reset')!;
 let candidate = '';
 let current: Settings;
+let recoverySnapshot: string | undefined;
 
 async function request(message: object): Promise<Settings> {
   const reply = await chrome.runtime.sendMessage(message);
-  if (!reply?.ok) throw new Error(reply?.error ?? 'Settings are unavailable. Reopen settings and try again.');
+  if (!reply?.ok) {
+    if ('type' in message && message.type === 'load') recoverySnapshot = reply?.recoverySnapshot;
+    throw new Error(reply?.error ?? 'Settings are unavailable. Reopen settings and try again.');
+  }
   coverage.hidden = reply.coverage === true;
   checkAccess.hidden = reply.coverage === true;
   return reply.settings;
@@ -120,7 +124,7 @@ async function load(): Promise<void> {
 reset.addEventListener('click', async () => {
   if (!window.confirm('Reset blocklist and settings? All saved sites and blocking rules will be removed.')) return;
   reset.disabled = true;
-  try { show(await request({ type: 'reset' }), 'Blocklist and settings reset. Blocking rules have been cleared.'); }
+  try { show(await request({ type: 'reset', recoverySnapshot }), 'Blocklist and settings reset. Blocking rules have been cleared.'); }
   catch (error) { status.textContent = `Reset failed. ${(error as Error).message} Reopen settings and try again.`; }
   finally { reset.disabled = false; }
 });
