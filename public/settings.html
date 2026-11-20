@@ -14,6 +14,9 @@
     <section aria-labelledby="blocklist-title">
       <h2 id="blocklist-title">Your blocklist</h2>
       <p id="status" role="status" aria-live="polite">Loading settings…</p>
+      <div id="coverage" hidden><strong>Blocking coverage is incomplete.</strong> Restore site access in Chrome: open Extensions, select Stoic Block, and allow access on all sites. Then return here and check access.</div>
+      <button id="check-access" type="button" hidden>Check site access</button>
+      <div id="recovery" hidden><p>Your stored configuration has been preserved. If it cannot be recovered, you can reset it and remove all installed rules.</p><button id="reset" type="button">Reset blocklist and settings</button></div>
       <form id="site-form" hidden>
         <label for="hostname">Site hostname or URL</label>
         <p id="hostname-help" class="hint">For example, example.com or https://example.com/path.</p>

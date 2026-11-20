@@ -1,12 +1,14 @@
 import { getDomain } from 'tldts';
 
 export const SETTINGS_KEY = 'settings';
+export const PENDING_KEY = 'pending';
 
 export interface Settings {
   version: 1;
   domains: string[];
   enabled: boolean;
   consent: boolean;
+  revision?: string;
 }
 
 export function emptySettings(): Settings {
@@ -46,12 +48,13 @@ export function readSettings(value: unknown): Settings {
   const data = value as Partial<Settings>;
   if (data.version !== 1 || !Array.isArray(data.domains) || data.domains.length > MAX_DOMAINS ||
       typeof data.enabled !== 'boolean' || typeof data.consent !== 'boolean' ||
+      (data.revision !== undefined && (typeof data.revision !== 'string' || !/^[a-f0-9-]{36}$/.test(data.revision))) ||
       data.domains.some(domain => typeof domain !== 'string' || normalizeHostname(domain) !== domain) ||
       new Set(data.domains).size !== data.domains.length ||
       ((data.domains.length > 0 || data.enabled) && !data.consent)) {
     throw new Error('Stored settings are unreadable. They have been preserved.');
   }
-  return { version: 1, domains: [...data.domains], enabled: data.enabled, consent: data.consent };
+  return { version: 1, domains: [...data.domains], enabled: data.enabled, consent: data.consent, ...(data.revision ? { revision: data.revision } : {}) };
 }
 
 export function rulesFor(settings: Settings): chrome.declarativeNetRequest.Rule[] {
@@ -74,6 +77,11 @@ export function rulesFor(settings: Settings): chrome.declarativeNetRequest.Rule[
 export interface BlockingPort {
   load(): Promise<unknown>;
   store(settings: Settings): Promise<void>;
+  pending(): Promise<unknown>;
+  begin(previous: Settings | null): Promise<void>;
+  commit(settings: Settings): Promise<void>;
+  clearPending(): Promise<void>;
+  clear(): Promise<void>;
   rules(): Promise<chrome.declarativeNetRequest.Rule[]>;
   replace(rules: chrome.declarativeNetRequest.Rule[]): Promise<void>;
 }
@@ -104,8 +112,22 @@ export class BlockingService {
   }
 
   async current(): Promise<Settings> {
+    const pending = await this.port.pending();
+    if (pending === null) await this.port.clearPending();
+    else if (pending !== undefined) {
+      if (!pending || typeof pending !== 'object' || !('previous' in pending)) throw new Error('Recovery data is unreadable. Settings have been preserved.');
+      const previous = (pending as { previous: unknown }).previous;
+      if (previous === null) {
+        await this.enforce(emptySettings());
+        await this.port.clear();
+      } else {
+        const authority = readSettings(previous);
+        await this.enforce(authority);
+        await this.port.store(authority);
+        await this.port.clearPending();
+      }
+    }
     const settings = readSettings(await this.port.load());
-    // Committed local configuration wins if a previous worker stopped mid-save.
     await this.enforce(settings);
     return settings;
   }
@@ -140,18 +162,37 @@ export class BlockingService {
     }
   }
 
+  async reset(): Promise<Settings> {
+    await this.port.begin(null);
+    await this.enforce(emptySettings());
+    await this.port.clear();
+    const cleared = readSettings(await this.port.load());
+    if (cleared.domains.length || cleared.enabled || cleared.consent || await this.port.pending() !== undefined || (await this.port.rules()).length) {
+      throw new Error('Reset could not be verified. Reopen settings and try again.');
+    }
+    return cleared;
+  }
+
   private async apply(previous: Settings, next: Settings): Promise<Settings> {
+    next = { ...next, revision: crypto.randomUUID() };
     try {
+      await this.port.begin(previous);
       await this.enforce(next);
       await this.port.store(next);
       if (JSON.stringify(readSettings(await this.port.load())) !== JSON.stringify(next)) {
         throw new Error('Settings could not be verified.');
       }
+      await this.enforce(next);
+      await this.port.commit(next);
+      // A committed marker is safe to clear later, including on worker restart.
+      await this.port.clearPending().catch(() => undefined);
       return next;
     } catch {
       try {
-        await this.port.store(previous);
+        await this.port.begin(previous);
         await this.enforce(previous);
+        await this.port.store(previous);
+        await this.port.clearPending();
       } catch {
         throw new Error('Saving failed and recovery could not finish. Reopen settings to retry recovery; blocking may be incomplete.');
       }

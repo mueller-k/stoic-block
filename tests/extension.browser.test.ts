@@ -99,7 +99,7 @@ test('consent → saved rules → actual redirected navigation, with configurati
     await settings.getByRole('button', { name: 'Add site' }).click();
     await expect(settings.getByRole('status')).toContainText('Added example.test');
     const savedState = await state();
-    expect(savedState.storage).toEqual({ settings: { version: 1, domains: ['news.example.test', 'example.test'], enabled: true, consent: true } });
+    expect(savedState.storage).toEqual({ settings: { version: 1, domains: ['news.example.test', 'example.test'], enabled: true, consent: true, revision: expect.any(String) } });
     expect(savedState.rules).toHaveLength(2);
     await expect(untouched.getByRole('heading', { name: 'Ordinary site' })).toBeVisible();
 
@@ -149,6 +149,122 @@ test('consent → saved rules → actual redirected navigation, with configurati
   } finally {
     await context?.close();
     await new Promise<void>(resolve => server ? server.close(() => resolve()) : resolve());
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test('preserves corrupt settings until a confirmed reset clears settings and rules', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'stoic-block-recovery-'));
+  const extension = resolve('dist');
+  const context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
+  try {
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    const id = new URL(worker.url()).hostname;
+    await worker.evaluate(() => chrome.storage.local.set({ settings: { broken: true } }));
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${id}/settings.html`);
+    await expect(page.getByRole('status')).toContainText('preserved');
+    await expect(page.getByRole('button', { name: 'Reset blocklist and settings' })).toBeVisible();
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', { name: 'Reset blocklist and settings' }).click();
+    await expect(page.getByRole('status')).toContainText('reset');
+    expect(await worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules())).toEqual([]);
+    expect((await worker.evaluate(() => chrome.storage.local.get('settings'))).settings).toBeUndefined();
+  } finally {
+    await context.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test('stale settings are rejected and interrupted changes recover the last successful configuration', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'stoic-block-interrupted-'));
+  const extension = resolve('dist');
+  const context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
+  try {
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    const id = new URL(worker.url()).hostname;
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${id}/settings.html`);
+    const call = (message: object) => page.evaluate(message => chrome.runtime.sendMessage(message), message);
+    const initial = (await call({ type: 'load' })).settings;
+    const first = await call({ type: 'save', hostname: 'example.test', consent: true, expected: initial });
+    expect(first.ok).toBe(true);
+    const stale = await call({ type: 'save', hostname: 'another.test', consent: true, expected: initial });
+    expect(stale.ok).toBe(false);
+    expect(stale.error).toContain('another tab');
+    await worker.evaluate(async previous => {
+      await chrome.storage.local.set({ pending: { previous }, settings: { ...previous, domains: ['another.test'] } });
+      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [1] });
+    }, first.settings);
+    const recovered = await call({ type: 'load' });
+    expect(recovered.settings).toEqual(first.settings);
+    expect(await worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules())).toHaveLength(1);
+    expect((await worker.evaluate(() => chrome.storage.local.get(null))).pending).toBeUndefined();
+    expect((await call({ type: 'reset' })).ok).toBe(true);
+    const staleAfterReset = await call({ type: 'save', hostname: 'stale.test', consent: true, expected: initial });
+    expect(staleAfterReset.ok).toBe(false);
+    expect(staleAfterReset.error).toContain('another tab');
+  } finally {
+    await context.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test('restricted site access is visible and can be checked again after restoration', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'stoic-block-access-'));
+  const extension = resolve('dist');
+  const context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
+  try {
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    const id = new URL(worker.url()).hostname;
+    await worker.evaluate(() => {
+      (globalThis as typeof globalThis & { originalContains?: typeof chrome.permissions.contains }).originalContains = chrome.permissions.contains;
+      chrome.permissions.contains = async () => false;
+    });
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${id}/settings.html`);
+    await expect(page.getByText('Blocking coverage is incomplete.', { exact: false })).toBeVisible();
+    await worker.evaluate(() => {
+      chrome.permissions.contains = (globalThis as typeof globalThis & { originalContains: typeof chrome.permissions.contains }).originalContains;
+    });
+    await page.getByRole('button', { name: 'Check site access' }).click();
+    await expect(page.getByText('Blocking coverage is incomplete.', { exact: false })).toBeHidden();
+  } finally {
+    await context.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});
+
+test('failed rule updates and reset remain visible and recoverable', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'stoic-block-failure-'));
+  const extension = resolve('dist');
+  const context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
+  try {
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    const id = new URL(worker.url()).hostname;
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${id}/settings.html`);
+    const call = (message: object) => page.evaluate(message => chrome.runtime.sendMessage(message), message);
+    const initial = (await call({ type: 'load' })).settings;
+    const saved = await call({ type: 'save', hostname: 'example.test', consent: true, expected: initial });
+    expect(saved.ok).toBe(true);
+    await worker.evaluate(() => {
+      (globalThis as typeof globalThis & { originalUpdate?: typeof chrome.declarativeNetRequest.updateDynamicRules }).originalUpdate = chrome.declarativeNetRequest.updateDynamicRules;
+      chrome.declarativeNetRequest.updateDynamicRules = async () => { throw new Error('injected failure'); };
+    });
+    const disable = await call({ type: 'enabled', enabled: false, expected: saved.settings });
+    expect(disable.ok).toBe(false);
+    expect((await worker.evaluate(() => chrome.storage.local.get('settings'))).settings).toEqual(saved.settings);
+    const reset = await call({ type: 'reset' });
+    expect(reset.ok).toBe(false);
+    expect((await worker.evaluate(() => chrome.storage.local.get('settings'))).settings).toEqual(saved.settings);
+    await worker.evaluate(() => {
+      chrome.declarativeNetRequest.updateDynamicRules = (globalThis as typeof globalThis & { originalUpdate: typeof chrome.declarativeNetRequest.updateDynamicRules }).originalUpdate;
+    });
+    expect((await call({ type: 'load' })).settings.domains).toEqual([]);
+    expect(await worker.evaluate(() => chrome.declarativeNetRequest.getDynamicRules())).toEqual([]);
+  } finally {
+    await context.close();
     await rm(profile, { recursive: true, force: true });
   }
 });

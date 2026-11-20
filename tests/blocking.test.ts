@@ -4,6 +4,7 @@ import { BlockingService, emptySettings, normalizeHostname, readSettings, rulesF
 
 function fixture() {
   let value: unknown;
+  let pending: unknown;
   let installed: chrome.declarativeNetRequest.Rule[] = [];
   let failRules = false;
   let failStorage = false;
@@ -13,6 +14,11 @@ function fixture() {
       if (failStorage) { failStorage = false; throw new Error('storage unavailable'); }
       value = structuredClone(settings);
     },
+    pending: async () => structuredClone(pending),
+    begin: async previous => { pending = { previous: structuredClone(previous) }; },
+    commit: async settings => { await port.store(settings); pending = null; },
+    clearPending: async () => { pending = undefined; },
+    clear: async () => { value = undefined; pending = undefined; },
     rules: async () => structuredClone(installed),
     replace: async rules => {
       if (failRules) { failRules = false; throw new Error('rule update rejected'); }
@@ -55,7 +61,8 @@ test('empty installation creates no rules or stored configuration, and consent i
 test('save installs one HTTP(S) top-level rule with a constant quote URL and only configuration in storage', async () => {
   const f = fixture();
   const saved = await f.service.save('EXAMPLE.TEST', true);
-  assert.deepEqual(f.stored(), { version: 1, domains: ['example.test'], enabled: true, consent: true });
+  assert.deepEqual(f.stored(), saved);
+  assert.match(saved.revision!, /^[a-f0-9-]{36}$/);
   assert.deepEqual(f.installed(), rulesFor(saved));
   assert.deepEqual(f.installed()[0].condition, { regexFilter: '^https?://', requestDomains: ['example.test'], resourceTypes: ['main_frame'] });
   assert.deepEqual(f.installed()[0].action.redirect, { extensionPath: '/quote.html' });

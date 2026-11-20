@@ -11,17 +11,24 @@ const status = document.querySelector<HTMLElement>('#status')!;
 const saved = document.querySelector<HTMLElement>('#saved')!;
 const domains = document.querySelector<HTMLElement>('#domains')!;
 const toggle = document.querySelector<HTMLButtonElement>('#toggle')!;
+const recovery = document.querySelector<HTMLElement>('#recovery')!;
+const coverage = document.querySelector<HTMLElement>('#coverage')!;
+const checkAccess = document.querySelector<HTMLButtonElement>('#check-access')!;
+const reset = document.querySelector<HTMLButtonElement>('#reset')!;
 let candidate = '';
 let current: Settings;
 
 async function request(message: object): Promise<Settings> {
   const reply = await chrome.runtime.sendMessage(message);
   if (!reply?.ok) throw new Error(reply?.error ?? 'Settings are unavailable. Reopen settings and try again.');
+  coverage.hidden = reply.coverage === true;
+  checkAccess.hidden = reply.coverage === true;
   return reply.settings;
 }
 
 function show(settings: Settings, message?: string): void {
   current = settings;
+  recovery.hidden = true;
   form.hidden = false;
   saved.hidden = !settings.consent;
   domains.replaceChildren();
@@ -100,4 +107,24 @@ toggle.addEventListener('click', () => {
   void change({ type: 'enabled', enabled: !current.enabled }, `Blocking ${current.enabled ? 'disabled' : 'enabled'}. Blocking rules have been verified.`);
 });
 
-void request({ type: 'load' }).then(settings => show(settings)).catch(error => { status.textContent = error.message; });
+async function load(): Promise<void> {
+  try { show(await request({ type: 'load' })); }
+  catch (error) {
+    form.hidden = true;
+    saved.hidden = true;
+    recovery.hidden = false;
+    status.textContent = (error as Error).message;
+  }
+}
+
+reset.addEventListener('click', async () => {
+  if (!window.confirm('Reset blocklist and settings? All saved sites and blocking rules will be removed.')) return;
+  reset.disabled = true;
+  try { show(await request({ type: 'reset' }), 'Blocklist and settings reset. Blocking rules have been cleared.'); }
+  catch (error) { status.textContent = `Reset failed. ${(error as Error).message} Reopen settings and try again.`; }
+  finally { reset.disabled = false; }
+});
+checkAccess.addEventListener('click', () => { void load(); });
+chrome.permissions.onAdded.addListener(() => { void load(); });
+chrome.permissions.onRemoved.addListener(() => { void load(); });
+void load();
