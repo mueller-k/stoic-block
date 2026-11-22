@@ -4,11 +4,11 @@ Research date: 2026-11-20. Issue: [#9](https://github.com/mueller-k/stoic-block/
 
 ## Status
 
-These remain **editorial candidates**, not an approved collection. On 2026-11-20 each passage was visually compared with a scan of a historical printed edition, with the discrepancies and limits recorded below. Long, Carter, and Gummere were checked in editions dated 1862, 1759, and 1917 respectively. Source links are for research, not runtime requests. The maintainer has not approved the actual excerpts. No rights determination below is a claim of worldwide clearance.
+The maintainer approved all eight scan-aligned excerpts below for the initial collection on 2026-11-22. On 2026-11-20 each passage was visually compared with a scan of a historical printed edition, with the discrepancies and limits recorded below. Long, Carter, and Gummere were checked in editions dated 1862, 1759, and 1917 respectively. Source links are for research, not runtime requests. No rights determination below is a claim of worldwide clearance.
 
 The maintainer's editorial direction is eight excerpts, including at least one each from Marcus Aurelius, Epictetus and Seneca, without a fixed balance. Prefer readable, self-contained historical wording and a calm, constructive tone. Prefer complete consecutive sentences; permit a clearly marked internal omission only if it preserves meaning and materially improves readability. Settings should offer concise credits linked to complete bundled offline provenance.
 
-## Candidates for editorial review
+## Approved excerpts
 
 1. **Attention** — “Attend to the matter which is before thee, whether it is an opinion or an act or a word.” Marcus Aurelius, *Meditations* 8.22, translated by George Long. [Transcription and adjacent sections](https://classics.mit.edu/Antoninus/meditations.8.eight.html). A brief direction to attend to the immediate matter. Visually checked against Long’s 1862 edition, p. 129 (PDF page 211), where it is the first paragraph of section 22. The next paragraph is self-reproach for putting off becoming good; the excerpt excludes that sentence. This passage was the original development fixture.
 
@@ -40,6 +40,6 @@ No third-party transcription, ebook branding, license header, or scan images are
 
 ## Remaining decisions and checks
 
-- Obtain maintainer editorial approval of the **actual scan-aligned text**, particularly Carter's capitalization and punctuation, and the potentially misleading isolation of item 5. Replacing or revising an excerpt requires fresh verification.
+- The maintainer approved the **actual scan-aligned text**, including Carter's capitalization and punctuation and the context cautions. Replacing or revising an excerpt requires fresh verification and editorial approval.
 - Pin a reviewable provenance record with edition, printed and scan pages, retrieval date, rights rationale, excerpt boundaries, any typographic normalization, reviewer and approval. Bundle it with concise settings credits and any notices applicable to the actual package.
-- Complete maintainer editorial and visual review and the remaining release checks required by issue #9. This research does not certify the extension or its release artifact.
+- Complete maintainer visual review and the remaining release checks required by issue #9. This research does not certify the extension or its release artifact.
