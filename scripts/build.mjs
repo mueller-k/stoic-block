@@ -5,7 +5,7 @@ await rm('dist', { recursive: true, force: true });
 await mkdir('dist');
 await cp('public', 'dist', { recursive: true });
 await build({
-  entryPoints: ['src/worker.ts', 'src/settings.ts'],
+  entryPoints: ['src/worker.ts', 'src/settings.ts', 'src/quote.ts'],
   outdir: 'dist',
   bundle: true,
   format: 'iife',
