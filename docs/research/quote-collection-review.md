@@ -4,7 +4,7 @@ Research date: 2026-11-20. Issue: [#9](https://github.com/mueller-k/stoic-block/
 
 ## Status
 
-The maintainer approved all eight scan-aligned excerpts below for the initial collection on 2026-11-22. On 2026-11-20 each passage was visually compared with a scan of a historical printed edition, with the discrepancies and limits recorded below. Long, Carter, and Gummere were checked in editions dated 1862, 1759, and 1917 respectively. Source links are for research, not runtime requests. No rights determination below is a claim of worldwide clearance.
+The maintainer (mueller-k) approved all eight scan-aligned excerpts below for the initial collection on 2026-11-22 and approved the light and dark quote-page previews that day. On 2026-11-20 each passage was visually compared with a scan of a historical printed edition, with the discrepancies and limits recorded below. Long, Carter, and Gummere were checked in editions dated 1862, 1759, and 1917 respectively. Source links are for research, not runtime requests. No rights determination below is a claim of worldwide clearance.
 
 The maintainer's editorial direction is eight excerpts, including at least one each from Marcus Aurelius, Epictetus and Seneca, without a fixed balance. Prefer readable, self-contained historical wording and a calm, constructive tone. Prefer complete consecutive sentences; permit a clearly marked internal omission only if it preserves meaning and materially improves readability. Settings should offer concise credits linked to complete bundled offline provenance.
 
@@ -41,5 +41,5 @@ No third-party transcription, ebook branding, license header, or scan images are
 ## Remaining decisions and checks
 
 - The maintainer approved the **actual scan-aligned text**, including Carter's capitalization and punctuation and the context cautions. Replacing or revising an excerpt requires fresh verification and editorial approval.
-- Pin a reviewable provenance record with edition, printed and scan pages, retrieval date, rights rationale, excerpt boundaries, any typographic normalization, reviewer and approval. Bundle it with concise settings credits and any notices applicable to the actual package.
-- Complete maintainer visual review and the remaining release checks required by issue #9. This research does not certify the extension or its release artifact.
+- The offline credits bundle editions, printed and scan pages, rights rationale, excerpt boundaries, typographic normalization, and the source-check date. Check the exact release package for any additional applicable notices.
+- Maintainer visual review covered light and dark quote-page previews. The broader release checks remain under issue #10; this research does not certify the release artifact.
