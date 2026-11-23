@@ -23,7 +23,7 @@
         <div class="entry"><input id="hostname" name="hostname" type="text" required maxlength="2048" placeholder="example.com" aria-describedby="hostname-help" autocomplete="off" autocapitalize="none" spellcheck="false"><button type="submit">Preview</button></div>
         <div id="confirmation" hidden>
           <h3>Confirm coverage</h3><p id="preview"></p>
-          <p>Your blocklist stays in this Chrome profile. Chrome stores redirect rules derived from it. Broad site access lets Stoic Block replace visits to the sites you choose; it does not record your browsing activity. Quotes are bundled, and the extension makes no external requests.</p>
+          <p>Your blocklist stays in this Chrome profile. Chrome stores redirect rules derived from it. Broad site access lets Stoic Block replace visits to the sites you choose; it does not record your browsing activity. Quotes are bundled, and the extension makes no external requests during operation. Links you choose open external websites.</p>
           <p><a href="privacy.html">Read the privacy explanation</a></p>
           <label class="check" id="consent-label"><input id="consent" type="checkbox">I understand and want to save this site and enable blocking.</label>
           <button id="save" type="button">Save and enable</button>
@@ -35,7 +35,7 @@
       </div>
     </section>
     <aside><h2>About blocking</h2><p>Supported HTTP/HTTPS navigations are blocked on each saved hostname and its subdomains. Already-open pages remain.</p><p>Incognito is excluded. Some offline pages and history restorations are outside Chrome’s redirect coverage. This is a focus aid, not a security control.</p><h2>Quote credits</h2><p>Featuring Marcus Aurelius, Epictetus, and Seneca, translated by George Long, Elizabeth Carter, and Richard M. Gummere.</p><p><a href="credits.html">Read complete quote sources and credits</a></p></aside>
-    <footer><a href="privacy.html">Privacy</a></footer>
+    <footer><a href="privacy.html">Privacy</a> · <a href="https://mueller-k.github.io/stoic-block/privacy/">Online privacy policy</a> · <a href="https://github.com/mueller-k/stoic-block/issues">Support on GitHub</a></footer>
   </main>
 </body>
 </html>
